@@ -145,6 +145,7 @@ def cmd_export(args) -> None:
         skipped=skipped,
         solver=route["solver"],
         context=data.load_context(),
+        graph_info={"nodes": G.number_of_nodes(), "edges": G.number_of_edges(), "network": "walk", "source": "OpenStreetMap"},
     )
     paths.DOCS_DATA.mkdir(parents=True, exist_ok=True)
     (paths.DOCS_DATA / "plan.json").write_text(json.dumps(p, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")

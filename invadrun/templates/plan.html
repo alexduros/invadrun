@@ -1,0 +1,243 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invadrun Route Book</title>
+<meta name="description" content="Stage-by-stage route book for flashing every Space Invader inside Paris in one continuous effort.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&family=Silkscreen&display=swap">
+<style>
+{{INCLUDE:theme.css}}
+{{INCLUDE:map.css}}
+.doc-head { padding: 40px 0 28px; display: grid; gap: 14px; }
+.doc-head h1 { max-width: 22ch; }
+.lede { font-size: 17px; color: var(--ink-2); max-width: 60ch; }
+.manifest { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); margin: 8px 0 28px; }
+.manifest div { padding: 14px 14px 14px 0; border-right: 1px solid var(--line); margin-right: 14px; }
+.manifest div:last-child { border-right: 0; }
+.manifest dt { font: 600 11.5px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.manifest dd { margin: 0; font: 500 26px/1.1 var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.manifest dd small { display: block; font: 400 12.5px/1.4 var(--font-body); color: var(--ink-2); margin-top: 4px; letter-spacing: 0; }
+.map-fig { margin: 0 0 12px; }
+.map-fig figcaption { font-size: 13px; color: var(--muted); margin-top: 10px; max-width: 70ch; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
+.legend button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; padding: 4px 9px 4px 6px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); font: 500 12.5px/1.4 var(--font-mono); color: var(--ink-2); }
+.legend button:hover, .legend button[aria-pressed="true"] { border-color: var(--ink-2); color: var(--ink); }
+.legend button i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.legend .clear { color: var(--muted); }
+section.block { margin-top: 56px; }
+section.block > header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+section.block > header p { color: var(--ink-2); font-size: 14.5px; max-width: 60ch; }
+/* time budget */
+.budget { display: grid; gap: 22px; }
+.tbar { display: flex; height: 26px; border-radius: 3px; overflow: hidden; gap: 2px; background: var(--bg); }
+.tbar div { display: flex; align-items: center; padding: 0 10px; font: 500 12px/1 var(--font-mono); white-space: nowrap; overflow: hidden; }
+.tbar .run { background: var(--acc); color: var(--acc-ink); }
+.tbar .flash { background: var(--acc-soft); color: var(--acc-text); }
+.tlegend { display: flex; gap: 18px; font-size: 13px; color: var(--ink-2); margin-top: 8px; }
+.tlegend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 6px; }
+.stagerows { display: grid; grid-template-columns: auto minmax(160px, 1fr) auto auto auto; gap: 6px 16px; align-items: center; font-size: 13.5px; }
+.stagerows .h { font: 600 11.5px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.stagerows .barcell { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.stagerows .bar { height: 14px; border-radius: 0 3px 3px 0; min-width: 2px; flex: 0 1 auto; }
+.stagerows .barcell span { flex: none; font: 500 12.5px/1.6 var(--font-mono); white-space: nowrap; color: var(--ink-2); }
+.stagerows .num { color: var(--ink-2); }
+.stagerows a { color: inherit; text-decoration: none; }
+.badge { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 4px; color: #fff; font: 700 12px/1 var(--font-pixel); }
+/* stages */
+.stage { border-top: 1px solid var(--line); padding: 26px 0 30px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.stage > header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.stage > header h2 { font-size: 22px; }
+.stage .facts { font: 500 14px/1.4 var(--font-mono); color: var(--ink-2); font-variant-numeric: tabular-nums; margin-left: auto; }
+.fromto { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 28px; }
+.fromto .k { font: 600 11.5px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.fromto .v { font-size: 15px; }
+.fromto .v b { font-family: var(--font-mono); font-weight: 600; }
+.fromto .v small { color: var(--muted); font-family: var(--font-mono); font-size: 12.5px; }
+.stage .arrs { font-size: 13.5px; color: var(--ink-2); }
+details.cue summary { cursor: pointer; font: 600 14px/1.4 var(--font-body); color: var(--acc-text); list-style: none; display: inline-flex; align-items: center; gap: 8px; }
+details.cue summary::before { content: ""; width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform .15s; }
+details.cue[open] summary::before { transform: rotate(45deg); }
+details.cue .table-wrap { margin-top: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+details.cue table { font-size: 13px; }
+details.cue th { position: sticky; top: 0; background: var(--surface); }
+details.cue td.code { font-family: var(--font-mono); font-weight: 500; white-space: nowrap; }
+details.cue td.code em { font-style: normal; color: var(--muted); font-weight: 400; }
+details.cue td.num { color: var(--ink-2); white-space: nowrap; }
+.boundary td { background: var(--surface-2); }
+/* prep */
+.prep { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px 40px; }
+.prep h3 { margin-bottom: 10px; }
+.prep ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 14.5px; color: var(--ink-2); }
+.prep li b { color: var(--ink); font-weight: 600; }
+.prep pre { margin: 10px 0 0; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); font: 12.5px/1.6 var(--font-mono); overflow-x: auto; color: var(--ink); }
+.assume { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 14.5px; }
+.assume dt { color: var(--muted); } .assume dd { margin: 0; font-family: var(--font-mono); font-size: 13.5px; }
+/* skipped / downloads */
+.skipped details summary { cursor: pointer; color: var(--acc-text); font-weight: 600; font-size: 14px; }
+.skipped ul.list { columns: 2; column-gap: 32px; padding-left: 18px; font-size: 13.5px; color: var(--ink-2); margin: 12px 0 0; }
+.skipped ul.list li { break-inside: avoid; } .skipped ul.list b { font-family: var(--font-mono); font-weight: 500; color: var(--ink); }
+.dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; list-style: none; padding: 0; margin: 0; }
+.dl a { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); text-decoration: none; color: var(--ink); }
+.dl a:hover { border-color: var(--ink-2); }
+.dl a b { font: 600 14px/1.3 var(--font-body); } .dl a small { color: var(--muted); font-family: var(--font-mono); font-size: 12px; }
+@media (max-width: 640px) { .stagerows { grid-template-columns: auto 1fr auto auto; } .stagerows .hide-sm { display: none; } .skipped ul.list { columns: 1; } .stage .facts { margin-left: 0; width: 100%; } }
+</style>
+
+<header class="wrap topbar">
+  <a class="logo" href="index.html">{{INCLUDE:logo.svg}}<b>INVADRUN</b></a>
+  <nav><a href="index.html">Project</a><a href="plan.html" aria-current="page">Route book</a><a href="viewer.html">Map viewer</a><a href="data/invadrun.gpx">GPX</a></nav>
+</header>
+
+<main class="wrap">
+  <section class="doc-head">
+    <p class="eyebrow" id="meta-line">Route book</p>
+    <h1>Every Space Invader in Paris, in the shortest walkable order.</h1>
+    <p class="lede">One continuous line through the twenty arrondissements, cut into stages you can load on a watch. Distances follow real footpaths; times assume you stop at every wall to flash it.</p>
+  </section>
+
+  <dl class="manifest" id="manifest"></dl>
+
+  <figure class="map-fig">
+    <div id="map"></div>
+    <ul class="legend" id="legend"></ul>
+    <figcaption>Numbered pins mark where each stage starts, F the finish. Grey digits are arrondissements. Dots are the walls; hover one to read its code. Hover or press a stage in the legend to isolate it.</figcaption>
+  </figure>
+
+  <section class="block" id="budget">
+    <header><h2>Time budget</h2><p id="budget-note"></p></header>
+    <div class="budget">
+      <div>
+        <div class="tbar" id="tbar"></div>
+        <div class="tlegend"><span><i style="background:var(--acc)"></i>Running</span><span><i style="background:var(--acc-soft)"></i>Stopped at walls</span></div>
+      </div>
+      <div class="stagerows" id="stagerows"></div>
+    </div>
+  </section>
+
+  <section class="block" id="stages">
+    <header><h2>Stages</h2><p>Each stage ends at a wall and the next one starts from that same wall, so the split costs no extra distance. Cue sheets list every stop with the leg from the previous wall and the running total.</p></header>
+    <div id="stage-list"></div>
+  </section>
+
+  <section class="block" id="prep">
+    <header><h2>Preparation</h2><p>What the estimate assumes, and what to sort out before the attempt.</p></header>
+    <div class="prep">
+      <div>
+        <h3>Assumptions</h3>
+        <dl class="assume" id="assume"></dl>
+        <pre id="cmd"></pre>
+      </div>
+      <div>
+        <h3>Before the attempt</h3>
+        <ul>
+          <li><b>Check every wall is still there.</b> Statuses change weekly on invader-spotter.art. Add destroyed or covered walls to <code>data/exclusions.txt</code> and re-run; the route re-optimises around them.</li>
+          <li><b>Load one GPX per stage</b> on the watch and keep the full track on the phone. Stage files are listed at the bottom of this page.</li>
+          <li><b>Budget phone battery for FlashInvaders.</b> Every wall is a photo with GPS and mobile data on; a power bank per stage is not optional.</li>
+          <li><b>Record the evidence.</b> A continuous GPS track per stage, the app's flash timestamps, and a photo at the first and last wall are what a fastest-known-time claim rests on.</li>
+          <li><b>Plan the return from each stage end.</b> Stages finish at a wall, not at a station; note the nearest métro before you go.</li>
+          <li><b>Stay a pedestrian.</b> A few walls sit on bridges or beside the périphérique. The route only uses footpaths, but the last metres to the wall are yours to judge.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="block skipped" id="skipped">
+    <header><h2>Not in this route</h2><p id="skipped-note"></p></header>
+    <div id="skipped-body"></div>
+  </section>
+
+  <section class="block" id="downloads">
+    <header><h2>Files</h2><p>GPX tracks carry the street geometry as a track and every wall as a named waypoint.</p></header>
+    <ul class="dl" id="dl"></ul>
+  </section>
+</main>
+
+<footer class="wrap site"><span>Invadrun · route computed on OpenStreetMap footpaths (© OpenStreetMap contributors, ODbL) · wall locations from invader-spotter.art</span><span id="foot-meta"></span></footer>
+
+<script id="plan-data" type="application/json">{{PLAN_JSON}}</script>
+<script>{{INCLUDE:map.js}}</script>
+<script>
+(function () {
+  const plan = JSON.parse(document.getElementById("plan-data").textContent);
+  const M = plan.meta, S = plan.stages, R = plan.route;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const dur = (s) => { const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h}h${String(m).padStart(2, "0")}` : `${m} min`; };
+  const km = (v, d = 1) => v.toLocaleString("en-GB", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const int = (v) => v.toLocaleString("en-GB");
+  const pace = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  const sw = InvMap.swatch;
+  const arrLabel = (a) => a == null ? "" : (a === 1 ? "1er" : `${a}e`);
+
+  $("meta-line").textContent = `Route book · ${M.generated} · ${M.scope === "paris" ? "Paris intra-muros" : "all PA codes"} · ${M.walls} walls`;
+  $("foot-meta").textContent = `invadrun ${M.version} · ${M.solver.engine}, ${M.solver.time_limit_s}s search`;
+
+  $("manifest").innerHTML = [
+    ["Distance", `${km(M.total_km)} km`, `${int(M.mean_leg_m)} m between walls on average`],
+    ["Walls", int(M.walls), `${int(M.codes)} invaders (some walls carry several)`],
+    ["Stages", M.stages, `about ${km(M.stage_km, 0)} km each`],
+    ["Running", dur(M.run_s), `at ${M.pace} min/km`],
+    ["At the walls", dur(M.flash_s), `${M.flash_seconds} s to flash each`],
+    ["Total", dur(M.est_s), "no breaks, no sleep"],
+  ].map(([k, v, s]) => `<div><dt>${k}</dt><dd>${v}<small>${s}</small></dd></div>`).join("");
+
+  const mapEl = $("map");
+  InvMap.render(mapEl, plan, { title: "Route through Paris coloured by stage" });
+  let pressed = null;
+  $("legend").innerHTML = S.map((s) => `<li><button type="button" data-stage="${s.n}" aria-pressed="false"><i style="background:${sw(s.n)}"></i>Stage ${s.n} · ${km(s.km)} km</button></li>`).join("") + `<li><button type="button" class="clear" data-clear>Show all</button></li>`;
+  const setFocus = (n) => InvMap.focus(mapEl, n);
+  $("legend").addEventListener("mouseover", (e) => { const b = e.target.closest("button[data-stage]"); if (b && pressed == null) setFocus(+b.dataset.stage); });
+  $("legend").addEventListener("mouseout", (e) => { if (e.target.closest("button[data-stage]") && pressed == null) setFocus(null); });
+  $("legend").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.clear != null) { pressed = null; } else { const n = +b.dataset.stage; pressed = pressed === n ? null : n; }
+    $("legend").querySelectorAll("button[data-stage]").forEach((x) => x.setAttribute("aria-pressed", String(+x.dataset.stage === pressed)));
+    setFocus(pressed);
+  });
+
+  // time budget
+  const runPct = (100 * M.run_s / M.est_s).toFixed(1), flashPct = (100 - runPct).toFixed(1);
+  $("tbar").innerHTML = `<div class="run" style="flex:0 0 ${runPct}%" title="Running ${dur(M.run_s)}">${dur(M.run_s)} running</div><div class="flash" style="flex:1" title="Stopped ${dur(M.flash_s)}">${dur(M.flash_s)} at walls</div>`;
+  $("budget-note").textContent = `${dur(M.est_s)} of effort for ${km(M.total_km)} km: ${flashPct}% of it is spent standing in front of a wall, which is why the flash routine matters as much as the pace.`;
+  const maxEst = Math.max(...S.map((s) => s.est_s));
+  $("stagerows").innerHTML = `<div class="h">Stage</div><div class="h">Estimate</div><div class="h">Distance</div><div class="h">Walls</div><div class="h hide-sm">Arrondissements</div>` + S.map((s) => `
+    <a href="#stage-${s.n}" class="badge" style="background:${sw(s.n)}">${s.n}</a>
+    <div class="barcell"><div class="bar" style="width:${(100 * s.est_s / maxEst).toFixed(1)}%;background:${sw(s.n)}"></div><span>${dur(s.est_s)}</span></div>
+    <div class="num">${km(s.km)} km</div>
+    <div class="num">${s.walls}</div>
+    <div class="num hide-sm">${s.arrondissements.map(arrLabel).join(", ")}</div>`).join("");
+
+  // stages
+  $("stage-list").innerHTML = S.map((s) => {
+    const rows = R.slice(s.start.i - 1, s.end.i);
+    return `<article class="stage" id="stage-${s.n}">
+      <header><span class="badge" style="background:${sw(s.n)}">${s.n}</span><h2>Stage ${s.n}</h2><div class="facts">${km(s.km)} km · ${s.walls} walls · ${s.codes} invaders · ${dur(s.est_s)}</div></header>
+      <div class="fromto">
+        <div><div class="k">Start · km ${km(s.cum_km_start)}</div><div class="v"><b>${esc(s.start.label)}</b> — ${esc(s.start.address)} <small>${arrLabel(s.start.arr)}</small></div></div>
+        <div><div class="k">Finish · km ${km(s.cum_km_end)}</div><div class="v"><b>${esc(s.end.label)}</b> — ${esc(s.end.address)} <small>${arrLabel(s.end.arr)}</small></div></div>
+      </div>
+      <p class="arrs">Arrondissements crossed: ${s.arrondissements.map(arrLabel).join(", ") || "—"}. Running ${dur(s.run_s)}, at the walls ${dur(s.flash_s)}.</p>
+      <details class="cue"><summary>Cue sheet · ${rows.length} stops</summary><div class="table-wrap"><table>
+        <thead><tr><th class="r">#</th><th>Invader</th><th>Address</th><th>Arr.</th><th class="r">Leg</th><th class="r">Total</th></tr></thead>
+        <tbody>${rows.map((r, i) => `<tr class="${i === 0 && s.n > 1 ? "boundary" : ""}"><td class="num r">${r.i}</td><td class="code">${esc(r.label)}${r.codes.length > 1 ? ` <em>×${r.codes.length}</em>` : ""}</td><td>${esc(r.address)}</td><td class="num">${arrLabel(r.arr)}</td><td class="num r">${i === 0 ? (s.n > 1 ? "resume" : "start") : int(Math.round(r.leg_km * 1000)) + " m"}</td><td class="num r">${km(r.cum_km)} km</td></tr>`).join("")}</tbody>
+      </table></div></details>
+    </article>`;
+  }).join("");
+
+  // assumptions
+  $("assume").innerHTML = [["Pace", `${M.pace} min/km (${pace(M.pace_s)})`], ["Per wall", `${M.flash_seconds} s stopped`], ["Stage length", `~${km(M.stage_km, 0)} km, cut at the nearest wall`], ["Breaks", "none counted"], ["Distances", "OSM footpaths, snapped to the nearest node"], ["Solver", `${M.solver.strategy.toLowerCase()}, ${M.solver.time_limit_s} s`]]
+    .map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("");
+  $("cmd").textContent = `# change the assumptions and re-render\nuv run invadrun export --pace ${M.pace} --flash-seconds ${M.flash_seconds} --stage-km ${M.stage_km}`;
+
+  // skipped
+  const K = plan.skipped, others = Object.entries(K.other_cities || {});
+  $("skipped-note").textContent = `${K.outside_city.length} PA walls sit outside the city limits and ${K.excluded.length} are excluded by hand${others.length ? `; the dataset also holds ${others.map(([c, n]) => `${n} ${c} walls`).join(", ")}` : ""}. Run with --scope all to route the suburbs too.`;
+  $("skipped-body").innerHTML =
+    `<details><summary>Outside the city limits (${K.outside_city.length})</summary><ul class="list">${K.outside_city.map((o) => `<li><b>${esc(o.label)}</b> — ${esc(o.address)}</li>`).join("")}</ul></details>` +
+    (K.excluded.length ? `<details style="margin-top:10px"><summary>Excluded (${K.excluded.length})</summary><ul class="list">${K.excluded.map((o) => `<li><b>${esc(o.label)}</b> — ${esc(o.address)}${o.reason ? ` · ${esc(o.reason)}` : ""}</li>`).join("")}</ul></details>` : `<p style="margin-top:10px;font-size:13.5px;color:var(--muted)">No wall is excluded yet: <code>data/exclusions.txt</code> is empty.</p>`);
+
+  // downloads
+  $("dl").innerHTML = [`<li><a href="data/invadrun.gpx"><b>Full route</b><small>invadrun.gpx · ${km(M.total_km)} km · ${M.walls} waypoints</small></a></li>`]
+    .concat(S.map((s) => `<li><a href="data/stage_${String(s.n).padStart(2, "0")}.gpx"><b>Stage ${s.n}</b><small>stage_${String(s.n).padStart(2, "0")}.gpx · ${km(s.km)} km · ${s.walls} walls</small></a></li>`))
+    .concat([`<li><a href="data/plan.json"><b>Plan data</b><small>plan.json · route, stages, geometry</small></a></li>`]).join("");
+})();
+</script>

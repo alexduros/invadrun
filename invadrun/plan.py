@@ -61,6 +61,7 @@ def build_plan(
     skipped: dict,
     solver: dict,
     context: dict,
+    graph_info: dict | None = None,
 ) -> dict:
     n = len(ordered)
     leg_km = [0.0] + [leg.length_m / 1000 for leg in legs]
@@ -157,6 +158,7 @@ def build_plan(
             "start": _stop(ordered[0], 0, 0.0),
             "end": _stop(ordered[-1], n - 1, total_km),
             "solver": solver,
+            "graph": graph_info or {},
             "per_arrondissement": dict(sorted(per_arr.items())),
             "snap_over_50m": int(sum(1 for s in snap_m if s > 50)),
         },
@@ -216,8 +218,11 @@ def render_pages(plan: dict, docs: Path = paths.DOCS, templates: Path = paths.TE
     out = []
     payload = json.dumps(plan, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     summary = json.dumps({"meta": plan["meta"], "stages": plan["stages"], "skipped": plan["skipped"]}, ensure_ascii=False).replace("</", "<\\/")
+    partials = templates / "partials"
     for tpl in sorted(templates.glob("*.html")):
         html = tpl.read_text(encoding="utf-8")
+        for name in set(re.findall(r"\{\{INCLUDE:([\w.-]+)\}\}", html)):
+            html = html.replace("{{INCLUDE:%s}}" % name, (partials / name).read_text(encoding="utf-8"))
         html = html.replace("{{PLAN_JSON}}", payload).replace("{{SUMMARY_JSON}}", summary)
         target = docs / tpl.name
         target.write_text(html, encoding="utf-8")

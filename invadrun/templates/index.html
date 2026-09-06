@@ -1,0 +1,206 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invadrun</title>
+<meta name="description" content="The shortest walk past every Space Invader in Paris: OpenStreetMap footpaths, a travelling-salesman solver, one GPX track and a route book for a fastest-known-time attempt.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&family=Silkscreen&display=swap">
+<style>
+{{INCLUDE:theme.css}}
+{{INCLUDE:map.css}}
+.hero { padding: 56px 0 24px; display: grid; gap: 20px; }
+.hero h1 { font-size: clamp(36px, 6vw, 68px); max-width: 15ch; line-height: 1.02; font-stretch: 118%; letter-spacing: -0.025em; }
+.hero .lede { font-size: clamp(17px, 1.6vw, 19px); color: var(--ink-2); max-width: 58ch; }
+.facts { display: flex; flex-wrap: wrap; gap: 10px 26px; font: 500 14px/1.4 var(--font-mono); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.facts b { color: var(--ink); font-weight: 600; }
+.cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+.cta a { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 4px; font: 600 14px/1 var(--font-body); text-decoration: none; border: 1px solid var(--line); color: var(--ink); background: var(--surface); }
+.cta a.primary { background: var(--acc); color: var(--acc-ink); border-color: var(--acc); }
+.cta a:hover { border-color: var(--ink-2); } .cta a.primary:hover { filter: brightness(1.08); }
+.hero-map { margin: 24px 0 0; }
+.hero-map figcaption { font-size: 13px; color: var(--muted); margin-top: 10px; }
+section.block { margin-top: 72px; display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 20px 48px; align-items: start; }
+section.block > header h2 { max-width: 14ch; }
+section.block > header p.sub { color: var(--muted); font-size: 14px; margin-top: 8px; max-width: 30ch; }
+.prose { font-size: 16.5px; }
+.prose p + p { margin-top: 1em; }
+.prose em { font-style: normal; font-family: var(--font-pixel); font-size: .8em; letter-spacing: .04em; }
+figure.diagram { margin: 0; }
+figure.diagram svg { width: 100%; max-width: 560px; height: auto; display: block; color: var(--ink); }
+figure.diagram figcaption { font-size: 13px; color: var(--muted); margin-top: 10px; max-width: 70ch; }
+.d-box { fill: var(--surface); stroke: currentColor; stroke-width: 1; }
+.d-box.acc { stroke: var(--acc); stroke-width: 1.6; }
+.d-title { font: 600 13px var(--font-body); fill: currentColor; }
+.d-sub { font: 400 11.5px var(--font-mono); fill: var(--ink-2); }
+.d-arrow { stroke: currentColor; stroke-width: 1; fill: none; }
+.d-lbl { font: 500 11.5px var(--font-mono); fill: var(--muted); text-anchor: start; }
+.steps { display: grid; gap: 14px; margin: 26px 0 0; padding: 0; list-style: none; counter-reset: s; }
+.steps li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; font-size: 15px; color: var(--ink-2); }
+.steps li p { margin: 0; max-width: 62ch; }
+.steps li::before { counter-increment: s; content: counter(s); font: 700 13px/1 var(--font-pixel); color: var(--acc-text); padding-top: 4px; }
+.steps li b { color: var(--ink); font-weight: 600; }
+figure.chart { margin: 0; }
+figure.chart svg { width: 100%; height: auto; display: block; }
+figure.chart figcaption { font-size: 13px; color: var(--muted); margin-top: 8px; }
+.c-bar { fill: var(--acc); }
+.c-lbl { font: 500 12px var(--font-mono); fill: var(--ink-2); font-variant-numeric: tabular-nums; }
+.c-cat { font: 400 12px var(--font-mono); fill: var(--ink-2); text-anchor: end; }
+.c-axis { stroke: var(--line); stroke-width: 1; }
+pre.cmd { margin: 0; padding: 16px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); font: 13px/1.65 var(--font-mono); overflow-x: auto; color: var(--ink); }
+pre.cmd .c { color: var(--muted); }
+.runtime { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; font-size: 14px; margin-top: 18px; }
+.runtime dt { color: var(--muted); } .runtime dd { margin: 0; font-family: var(--font-mono); font-size: 13.5px; }
+.srcs { display: grid; gap: 14px; font-size: 15px; color: var(--ink-2); }
+.srcs b { color: var(--ink); font-weight: 600; }
+@media (max-width: 760px) { section.block { grid-template-columns: 1fr; gap: 14px; } section.block > header p.sub { max-width: none; } }
+</style>
+
+<header class="wrap topbar">
+  <a class="logo" href="index.html">{{INCLUDE:logo.svg}}<b>INVADRUN</b></a>
+  <nav><a href="index.html" aria-current="page">Project</a><a href="plan.html">Route book</a><a href="viewer.html">Map viewer</a><a href="https://github.com/alexduros/invadrun">GitHub</a></nav>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <p class="eyebrow">Paris · Space Invaders · fastest known time</p>
+    <h1>The shortest walk past every Space Invader in Paris.</h1>
+    <p class="lede">Invadrun takes the walls still standing inside the city limits, the OpenStreetMap footpath network and a travelling-salesman solver, and turns them into one GPX track and a stage-by-stage route book for a fastest-known-time attempt.</p>
+    <div class="facts" id="facts"></div>
+    <div class="cta">
+      <a class="primary" href="plan.html">Open the route book</a>
+      <a href="viewer.html">Explore on the map</a>
+      <a href="data/invadrun.gpx">Download the GPX</a>
+    </div>
+    <figure class="hero-map">
+      <div id="hero-map"></div>
+      <figcaption id="hero-cap"></figcaption>
+    </figure>
+  </section>
+
+  <section class="block">
+    <header><h2>The game</h2><p class="sub">Why anyone would run past a thousand mosaics.</p></header>
+    <div class="prose">
+      <p>Since 1998 the artist Invader has been cementing small tiled aliens onto the walls of Paris, each one numbered: <em>PA_0001</em> near the Bastille, <em>PA_1434</em> somewhere in the suburbs, and everything in between. The FlashInvaders app turns the city into a board: photograph a mosaic in place and it is yours, with points attached.</p>
+      <p>Most players collect over years. The idea here is the opposite: visit every wall inside the périphérique in one continuous, timed effort, the way trail runners set a fastest known time on a route. That needs an order to visit them in, honest distances along real streets, and a plan that survives contact with a phone battery.</p>
+      <p>Invadrun computes the order. The rest is running.</p>
+    </div>
+  </section>
+
+  <section class="block">
+    <header><h2>How the route is built</h2><p class="sub">Five steps, all reproducible from the repository.</p></header>
+    <div>
+      <figure class="diagram">
+        <svg viewBox="0 0 720 430" role="img" aria-label="Pipeline: uMap export, cleaned dataset, OpenStreetMap walking graph, street distance matrix, travelling-salesman order, GPX and route book" xmlns="http://www.w3.org/2000/svg">
+          <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+          <g id="d-nodes"></g>
+        </svg>
+        <figcaption>Every arrow is a file on disk, so any step can be re-run alone: swap the dataset, widen the scope to the suburbs, or give the solver more time.</figcaption>
+      </figure>
+      <ol class="steps">
+        <li><p><b>Clean the dataset.</b> The invader-spotter export is a uMap layer with broken accents and codes written five different ways. Each wall gets its list of codes, a readable address, its arrondissement and a flag for whether it sits inside Paris. <span id="s-clean"></span></p></li>
+        <li><p><b>Download the footpath network.</b> OpenStreetMap's walkable ways for Paris and a small margin around it, cached once as GraphML. <span id="s-graph"></span></p></li>
+        <li><p><b>Measure every pair.</b> Each wall is snapped to its nearest node, then one single-source Dijkstra per wall fills the whole distance matrix. <span id="s-matrix"></span></p></li>
+        <li><p><b>Find the order.</b> OR-Tools solves an open travelling-salesman path: start and finish are free, so the solver picks them. Guided local search polishes the tour for as long as you let it. <span id="s-solve"></span></p></li>
+        <li><p><b>Write the plan.</b> Shortest paths between consecutive walls give the geometry; the path is cut into stages at the nearest wall and exported as GPX, JSON and these pages. <span id="s-export"></span></p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="block">
+    <header><h2>Where the walls are</h2><p class="sub">Walls on the route, by arrondissement.</p></header>
+    <figure class="chart">
+      <div id="arr-chart"></div>
+      <figcaption id="arr-cap"></figcaption>
+    </figure>
+  </section>
+
+  <section class="block">
+    <header><h2>Reproduce it</h2><p class="sub">Python 3.11+, uv, and a few minutes.</p></header>
+    <div>
+<pre class="cmd"><span class="c"># install</span>
+git clone https://github.com/alexduros/invadrun && cd invadrun
+uv sync
+
+<span class="c"># full pipeline: clean → graph → matrix → solve → export</span>
+uv run invadrun all --time-limit 240
+
+<span class="c"># or step by step, e.g. a fixed start and more search time</span>
+uv run invadrun solve --start PA_0041 --time-limit 900
+uv run invadrun export --stage-km 50 --pace 6:00 --flash-seconds 30
+
+<span class="c"># preview docs/ locally</span>
+make serve</pre>
+      <dl class="runtime" id="runtime"></dl>
+    </div>
+  </section>
+
+  <section class="block">
+    <header><h2>Sources &amp; fair play</h2></header>
+    <div class="srcs">
+      <p><b>Wall locations</b> come from <a href="https://www.invader-spotter.art/villes.php">invader-spotter.art</a>, exported through uMap. It is a snapshot: walls get destroyed, covered and restored all the time, so check the current status before an attempt and keep <code>data/exclusions.txt</code> honest.</p>
+      <p><b>Streets</b> are © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>, ODbL, fetched with osmnx. Routing uses the walking network only.</p>
+      <p><b>Solver</b> is Google OR-Tools; the matrix is scipy's sparse Dijkstra. The code is public domain (Unlicense).</p>
+      <p><b>The art belongs to Invader.</b> Flash it, don't touch it, and treat the walls, courtyards and neighbours the same way a walker would.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap site"><span>Invadrun · an open-source route planner for the Paris Space Invaders</span><span id="foot-meta"></span></footer>
+
+<script id="plan-data" type="application/json">{{PLAN_JSON}}</script>
+<script>{{INCLUDE:map.js}}</script>
+<script>
+(function () {
+  const plan = JSON.parse(document.getElementById("plan-data").textContent);
+  const M = plan.meta, S = plan.stages, K = plan.skipped;
+  const $ = (id) => document.getElementById(id);
+  const int = (v) => v.toLocaleString("en-GB");
+  const km = (v, d = 1) => v.toLocaleString("en-GB", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const dur = (s) => { const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h}h${String(m).padStart(2, "0")}` : `${m} min`; };
+  const arrLabel = (a) => a === 1 ? "1er" : `${a}e`;
+
+  $("facts").innerHTML = [[km(M.total_km) + " km", "on foot"], [int(M.walls), "walls"], [int(M.codes), "invaders"], [M.stages, "stages"], [dur(M.est_s), "estimated, at " + M.pace + "/km"]]
+    .map(([v, l]) => `<span><b>${v}</b> ${l}</span>`).join("");
+  $("foot-meta").textContent = `route of ${M.generated} · invadrun ${M.version}`;
+
+  InvMap.render($("hero-map"), plan, { title: "The whole route across Paris, coloured by stage" });
+  $("hero-cap").textContent = `The full ${km(M.total_km)} km line, coloured by stage. It starts at ${M.start.label} (${M.start.address}) and finishes at ${M.end.label} (${M.end.address}).`;
+
+  // pipeline diagram
+  const g = M.graph || {};
+  const nodes = [
+    ["uMap export", `${int(M.walls + K.outside_city.length + K.excluded.length + Object.values(K.other_cities || {}).reduce((a, b) => a + b, 0))} points`],
+    ["Clean dataset", `${int(M.walls)} walls in Paris`],
+    ["Walking graph", g.nodes ? `${int(g.nodes)} nodes` : "OpenStreetMap"],
+    ["Distance matrix", `${int(M.walls)} × ${int(M.walls)} metres`],
+    ["Visiting order", "open TSP path", true],
+    ["GPX + route book", `${km(M.total_km)} km, ${M.stages} stages`],
+  ];
+  const labels = ["fix codes, keep Paris", "snap to nearest node", "one Dijkstra per wall", "OR-Tools, guided search", "shortest path per leg"];
+  const bw = 440, h = 46, step = 76, x = 1;
+  $("d-nodes").innerHTML = nodes.map(([t, s, acc], i) => {
+    const y = 2 + i * step;
+    const arrow = i < 5 ? `<path class="d-arrow" d="M${x + 40} ${y + h + 2}V${y + step - 3}" marker-end="url(#arr)"/><text class="d-lbl" x="${x + 52}" y="${y + h + 19}">${labels[i]}</text>` : "";
+    return `<rect class="d-box${acc ? " acc" : ""}" x="${x}" y="${y}" width="${bw}" height="${h}" rx="3"/><text class="d-title" x="${x + 14}" y="${y + 20}">${t}</text><text class="d-sub" x="${x + 14}" y="${y + 36}">${s}</text>${arrow}`;
+  }).join("");
+  $("s-clean").textContent = `${int(K.outside_city.length)} PA walls fall outside the limits and are kept aside.`;
+  $("s-graph").textContent = g.nodes ? `${int(g.nodes)} nodes, ${int(g.edges)} edges.` : "";
+  $("s-matrix").textContent = `${int(M.walls)} walls, so ${int(M.walls)} searches instead of ${int(M.walls * (M.walls - 1) / 2)} pairs.`;
+  $("s-solve").textContent = `This route had ${M.solver.time_limit_s} s.`;
+  $("s-export").textContent = `Stages here are about ${km(M.stage_km, 0)} km.`;
+
+  // arrondissement chart (horizontal bars, 1..20, single series, direct labels)
+  const per = M.per_arrondissement, cats = Object.keys(per).map(Number).sort((a, b) => a - b);
+  const max = Math.max(...cats.map((c) => per[c]));
+  const rowH = 20, left = 44, right = 56, W = 720, top = 6, H = top + cats.length * rowH + 10, plotW = W - left - right;
+  const bars = cats.map((c, i) => {
+    const yy = top + i * rowH, w = Math.max(2, plotW * per[c] / max);
+    return `<text class="c-cat" x="${left - 10}" y="${yy + 14}">${arrLabel(c)}</text><rect class="c-bar" x="${left}" y="${yy + 4}" width="${w.toFixed(1)}" height="12" rx="0" ry="0"><title>${arrLabel(c)} arrondissement: ${per[c]} walls</title></rect><text class="c-lbl" x="${left + w + 8}" y="${yy + 14}">${per[c]}</text>`;
+  }).join("");
+  $("arr-chart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Walls per arrondissement, from the 1st to the 20th" xmlns="http://www.w3.org/2000/svg"><line class="c-axis" x1="${left}" y1="${top}" x2="${left}" y2="${H - 8}"/>${bars}</svg>`;
+  const topArr = cats.slice().sort((a, b) => per[b] - per[a]).slice(0, 3);
+  $("arr-cap").textContent = `${topArr.map((c) => `${arrLabel(c)} (${per[c]})`).join(", ")} hold the most walls; the west is sparse. Counts are walls on the route, not codes.`;
+
+  $("runtime").innerHTML = [["Graph download", "about a minute, once"], ["Distance matrix", `seconds for ${int(M.walls)} walls`], ["Solver", `your call: --time-limit ${M.solver.time_limit_s} here`], ["Export", "under a minute"]]
+    .map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+})();
+</script>

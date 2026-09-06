@@ -1,0 +1,13 @@
+.m-svg { width: 100%; height: auto; display: block; background: var(--map-ground); border-radius: var(--radius); }
+.m-water path { fill: var(--water); stroke: none; }
+.m-river path { fill: none; stroke: var(--water); stroke-width: 3; }
+.m-arr path { fill: none; stroke: var(--map-line); stroke-width: .6; }
+.m-city { fill: none; stroke: var(--muted); stroke-width: 1.1; }
+.m-arr-labels text { font: 500 10px var(--font-mono); fill: var(--muted); text-anchor: middle; opacity: .8; }
+.m-route path { fill: none; stroke-width: 2.1; stroke-linejoin: round; stroke-linecap: round; transition: opacity .18s ease; }
+.m-dot { fill: var(--ink); opacity: .55; transition: opacity .18s ease; }
+.m-pin circle, .m-pin rect { stroke: var(--surface); stroke-width: 1.5; }
+.m-pin text { font: 700 10px var(--font-pixel); fill: #fff; text-anchor: middle; paint-order: stroke; }
+.m-fin rect { fill: var(--ink); }
+.m-fin text { fill: var(--bg); }
+.m-dim { opacity: .12 !important; }

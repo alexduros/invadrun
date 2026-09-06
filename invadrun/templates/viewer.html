@@ -1,0 +1,178 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invadrun Map</title>
+<meta name="description" content="Interactive OpenStreetMap viewer for the Invadrun route: every Space Invader wall in Paris, in visiting order, coloured by stage.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&family=Silkscreen&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+<style>
+{{INCLUDE:theme.css}}
+html, body { height: 100%; }
+body { display: grid; grid-template-columns: 340px minmax(0, 1fr); grid-template-rows: 100dvh; overflow: hidden; }
+aside { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); background: var(--surface); }
+aside .head { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+aside .head nav { display: flex; gap: 12px; font-size: 13px; } aside .head nav a { color: var(--ink-2); text-decoration: none; } aside .head nav a:hover { color: var(--ink); text-decoration: underline; }
+.summary { padding: 12px 16px; font: 500 12.5px/1.5 var(--font-mono); color: var(--ink-2); border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.summary b { color: var(--ink); font-weight: 600; }
+.search { padding: 12px 16px; border-bottom: 1px solid var(--line); position: relative; }
+.search input { width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--ink); font: 400 14px/1.3 var(--font-body); }
+.search input::placeholder { color: var(--muted); }
+.results { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; max-height: 220px; overflow: auto; }
+.results li button { all: unset; cursor: pointer; display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: baseline; width: 100%; padding: 6px 8px; border-radius: 3px; font-size: 13px; color: var(--ink-2); box-sizing: border-box; }
+.results li button:hover, .results li button:focus-visible { background: var(--surface-2); color: var(--ink); }
+.results b { font-family: var(--font-mono); font-weight: 500; color: var(--ink); white-space: nowrap; }
+.results .empty { color: var(--muted); font-size: 13px; padding: 6px 8px; }
+.stages { flex: 1; min-height: 0; overflow: auto; padding: 8px 8px 16px; }
+.stages .tools { display: flex; gap: 6px; padding: 4px 8px 10px; }
+.stages .tools button { all: unset; cursor: pointer; font: 500 12px/1 var(--font-body); color: var(--acc-text); padding: 6px 8px; border: 1px solid var(--line); border-radius: 3px; }
+.stages .tools button:hover { border-color: var(--ink-2); }
+.stage { display: grid; grid-template-columns: auto auto 1fr; gap: 0 10px; align-items: center; padding: 8px 8px; border-radius: 4px; }
+.stage:hover { background: var(--surface-2); }
+.stage input { margin: 0; accent-color: var(--acc); }
+.stage .badge { width: 24px; height: 24px; border-radius: 4px; display: grid; place-items: center; color: #fff; font: 700 11px/1 var(--font-pixel); }
+.stage button { all: unset; cursor: pointer; display: grid; gap: 1px; }
+.stage button b { font: 600 13.5px/1.3 var(--font-body); color: var(--ink); }
+.stage button small { font: 400 12px/1.3 var(--font-mono); color: var(--muted); }
+.stage.off { opacity: .45; }
+.detail { border-top: 1px solid var(--line); padding: 12px 16px 14px; font-size: 13.5px; min-height: 96px; }
+.detail .code { font: 600 15px/1.3 var(--font-mono); }
+.detail .code em { font-style: normal; color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 6px; }
+.detail .addr { color: var(--ink-2); margin-top: 2px; }
+.detail .row { display: flex; gap: 14px; margin-top: 8px; font: 500 12.5px/1.4 var(--font-mono); color: var(--ink-2); flex-wrap: wrap; }
+.detail .hint { color: var(--muted); }
+.detail .nav { display: flex; gap: 8px; margin-top: 10px; }
+.detail .nav button { all: unset; cursor: pointer; font: 500 12px/1 var(--font-body); color: var(--acc-text); padding: 6px 8px; border: 1px solid var(--line); border-radius: 3px; }
+#map { min-height: 0; background: var(--bg); }
+.leaflet-container { font: 13px/1.4 var(--font-body); background: var(--bg); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.6); } }
+:root[data-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9) saturate(.6); }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.leaflet-popup-content { margin: 12px 14px; }
+.leaflet-popup-content .code { font: 600 14px/1.3 var(--font-mono); }
+.leaflet-popup-content .addr { color: var(--ink-2); }
+.leaflet-popup-content .cum { font: 500 12px/1.4 var(--font-mono); color: var(--muted); margin-top: 4px; }
+.leaflet-bar a, .leaflet-control-layers { background: var(--surface); color: var(--ink); border-color: var(--line) !important; }
+.leaflet-bar a:hover { background: var(--surface-2); }
+.leaflet-control-attribution { background: color-mix(in srgb, var(--surface) 85%, transparent) !important; color: var(--muted) !important; }
+.leaflet-control-attribution a { color: var(--ink-2) !important; }
+.pin { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: #fff; font: 700 12px/1 var(--font-pixel); border: 2px solid var(--surface); box-shadow: var(--shadow); }
+.pin.fin { border-radius: 4px; background: var(--ink); color: var(--bg); }
+.current { stroke: var(--ink) !important; stroke-width: 3 !important; }
+.menu-toggle { display: none; }
+@media (max-width: 800px) {
+  body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  aside { border-right: 0; border-bottom: 1px solid var(--line); max-height: 46dvh; }
+  .stages { display: none; } body.menu .stages { display: block; }
+  .menu-toggle { display: inline-block; all: unset; cursor: pointer; font: 500 12px/1 var(--font-body); color: var(--acc-text); padding: 6px 8px; border: 1px solid var(--line); border-radius: 3px; }
+}
+</style>
+
+<aside>
+  <div class="head">
+    <a class="logo" href="index.html">{{INCLUDE:logo.svg}}<b>INVADRUN</b></a>
+    <nav><a href="plan.html">Route book</a><a href="data/invadrun.gpx">GPX</a><button class="menu-toggle" type="button" id="menu">Stages</button></nav>
+  </div>
+  <div class="summary" id="summary"></div>
+  <div class="search">
+    <input id="q" type="search" placeholder="Find a code or a street, e.g. PA_0290 or Oberkampf" autocomplete="off" aria-label="Search walls">
+    <ul class="results" id="results" hidden></ul>
+  </div>
+  <div class="stages" id="stages">
+    <div class="tools"><button type="button" id="all">All stages</button><button type="button" id="fit">Fit route</button></div>
+    <div id="stage-list"></div>
+  </div>
+  <div class="detail" id="detail"><span class="hint">Click a wall on the map, or search for one, to see its place in the route.</span></div>
+</aside>
+<div id="map"></div>
+
+<script id="plan-data" type="application/json">{{PLAN_JSON}}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+(function () {
+  const plan = JSON.parse(document.getElementById("plan-data").textContent);
+  const M = plan.meta, S = plan.stages, R = plan.route, poly = plan.polyline;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const km = (v, d = 1) => v.toLocaleString("en-GB", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const dur = (s) => { const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h}h${String(m).padStart(2, "0")}` : `${m} min`; };
+  const arrLabel = (a) => a == null ? "" : (a === 1 ? "1er" : `${a}e`);
+  const css = getComputedStyle(document.documentElement);
+  const color = (n) => css.getPropertyValue(`--s${((n - 1) % 8) + 1}`).trim();
+
+  $("summary").innerHTML = `<span><b>${km(M.total_km)} km</b></span><span><b>${M.walls}</b> walls</span><span><b>${M.stages}</b> stages</span><span><b>${dur(M.est_s)}</b> est.</span>`;
+
+  const map = L.map("map", { zoomControl: true, preferCanvas: true });
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors" }).addTo(map);
+
+  const layers = {}, markers = new Map();
+  S.forEach((s) => {
+    const group = L.layerGroup();
+    const pts = poly.slice(s.poly_start, Math.min(s.poly_end + 1, poly.length));
+    L.polyline(pts, { color: color(s.n), weight: 4, opacity: .9, lineJoin: "round" }).addTo(group);
+    R.slice(s.start.i - 1, s.end.i).forEach((r) => {
+      if (markers.has(r.i)) return;
+      const m = L.circleMarker([r.lat, r.lon], { radius: 4.5, color: "#fff", weight: 1.2, fillColor: color(r.stage), fillOpacity: 1 });
+      m.bindPopup(`<div class="code">${esc(r.label)}</div><div class="addr">${esc(r.address)} ${arrLabel(r.arr)}</div><div class="cum">#${r.i} · km ${km(r.cum_km)} · stage ${r.stage}</div>`);
+      m.on("click", () => select(r.i, false));
+      m.addTo(group); markers.set(r.i, m);
+    });
+    const st = s.start;
+    L.marker([st.lat, st.lon], { icon: L.divIcon({ className: "", html: `<div class="pin" style="background:${color(s.n)}">${s.n}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }), zIndexOffset: 500, title: `Stage ${s.n} start: ${st.label}` }).addTo(group);
+    layers[s.n] = group.addTo(map);
+  });
+  L.marker([M.end.lat, M.end.lon], { icon: L.divIcon({ className: "", html: `<div class="pin fin">F</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }), zIndexOffset: 600, title: `Finish: ${M.end.label}` }).addTo(map);
+
+  const routeBounds = L.latLngBounds(poly);
+  const fit = () => map.fitBounds(routeBounds, { padding: [20, 20] });
+  fit();
+
+  // stage list
+  $("stage-list").innerHTML = S.map((s) => `<label class="stage" data-n="${s.n}"><input type="checkbox" checked data-n="${s.n}"><span class="badge" style="background:${color(s.n)}">${s.n}</span><button type="button" data-zoom="${s.n}"><b>Stage ${s.n} · ${km(s.km)} km</b><small>${s.walls} walls · ${dur(s.est_s)} · ${esc(s.start.address)} → ${esc(s.end.address)}</small></button></label>`).join("");
+  $("stage-list").addEventListener("change", (e) => {
+    const n = +e.target.dataset.n; if (!n) return;
+    const row = e.target.closest(".stage"); row.classList.toggle("off", !e.target.checked);
+    if (e.target.checked) layers[n].addTo(map); else map.removeLayer(layers[n]);
+  });
+  $("stage-list").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-zoom]"); if (!b) return;
+    e.preventDefault();
+    const s = S[+b.dataset.zoom - 1];
+    const pts = poly.slice(s.poly_start, Math.min(s.poly_end + 1, poly.length));
+    map.fitBounds(L.latLngBounds(pts), { padding: [20, 20] });
+  });
+  $("all").addEventListener("click", () => $("stage-list").querySelectorAll("input").forEach((i) => { if (!i.checked) { i.checked = true; i.dispatchEvent(new Event("change", { bubbles: true })); } }));
+  $("fit").addEventListener("click", fit);
+  $("menu").addEventListener("click", () => document.body.classList.toggle("menu"));
+
+  // selection
+  let current = null;
+  function select(i, pan = true) {
+    const r = R[i - 1]; if (!r) return;
+    if (current) markers.get(current).getElement()?.classList.remove("current");
+    current = i;
+    const m = markers.get(i);
+    if (!map.hasLayer(layers[r.stage])) { const cb = $("stage-list").querySelector(`input[data-n="${r.stage}"]`); cb.checked = true; cb.dispatchEvent(new Event("change", { bubbles: true })); }
+    if (pan) { map.setView([r.lat, r.lon], Math.max(map.getZoom(), 16)); m.openPopup(); }
+    m.getElement()?.classList.add("current");
+    const prev = R[i - 2], next = R[i];
+    $("detail").innerHTML = `<div class="code">${esc(r.label)}${r.codes.length > 1 ? `<em>${r.codes.length} invaders</em>` : ""}</div><div class="addr">${esc(r.address)}${r.arr ? `, ${arrLabel(r.arr)}` : ""}</div>
+      <div class="row"><span>#${r.i} of ${R.length}</span><span>km ${km(r.cum_km)}</span><span>stage ${r.stage}</span>${r.leg_km ? `<span>${Math.round(r.leg_km * 1000)} m from previous</span>` : ""}</div>
+      <div class="nav">${prev ? `<button type="button" data-go="${prev.i}">← #${prev.i} ${esc(prev.id)}</button>` : ""}${next ? `<button type="button" data-go="${next.i}">#${next.i} ${esc(next.id)} →</button>` : ""}</div>`;
+  }
+  $("detail").addEventListener("click", (e) => { const b = e.target.closest("button[data-go]"); if (b) select(+b.dataset.go); });
+
+  // search
+  const norm = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const index = R.map((r) => ({ r, key: norm(`${r.codes.join(" ")} ${r.address}`) }));
+  $("q").addEventListener("input", () => {
+    const q = norm($("q").value.trim().replace(/^pa[_\s-]*/i, "pa_"));
+    const box = $("results");
+    if (q.length < 2) { box.hidden = true; box.innerHTML = ""; return; }
+    const hits = index.filter((x) => x.key.includes(q)).slice(0, 20);
+    box.hidden = false;
+    box.innerHTML = hits.length ? hits.map(({ r }) => `<li><button type="button" data-go="${r.i}"><b>${esc(r.label)}</b><span>${esc(r.address)} · #${r.i}</span></button></li>`).join("") : `<li class="empty">No wall matches “${esc($("q").value)}” on the route.</li>`;
+  });
+  $("results").addEventListener("click", (e) => { const b = e.target.closest("button[data-go]"); if (b) { select(+b.dataset.go); $("results").hidden = true; } });
+  if (location.hash.startsWith("#w")) select(+location.hash.slice(2));
+})();
+</script>

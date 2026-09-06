@@ -1,0 +1,3 @@
+# Invaders to skip (one code per line, optional "# reason").
+# Typical reasons: destroyed, covered, unreachable (private courtyard, highway).
+# Check status on https://www.invader-spotter.art before an attempt.

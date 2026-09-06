@@ -165,3 +165,7 @@ cython_debug/
 cache/*
 *npy
 *graphml
+
+# invadrun: heavy caches (OSM graph, distance matrix, solver state)
+cache/
+.venv/

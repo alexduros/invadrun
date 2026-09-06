@@ -34,7 +34,14 @@ aside .head nav { display: flex; gap: 12px; font-size: 13px; } aside .head nav a
 .stage button b { font: 600 13.5px/1.3 var(--font-body); color: var(--ink); }
 .stage button small { font: 400 12px/1.3 var(--font-mono); color: var(--muted); }
 .stage.off { opacity: .45; }
-.detail { border-top: 1px solid var(--line); padding: 12px 16px 14px; font-size: 13.5px; min-height: 96px; }
+.detail { border-top: 1px solid var(--line); padding: 12px 16px 14px; font-size: 13.5px; min-height: 96px; max-height: 46dvh; overflow: auto; }
+.gallery { display: grid; gap: 10px; margin-top: 12px; }
+.gallery figure { margin: 0; } .gallery img { width: 100%; border-radius: 4px; display: block; }
+.gallery figcaption { font-size: 12px; color: var(--ink-2); margin-top: 4px; } .gallery figcaption b { font-family: var(--font-mono); }
+.credit { margin: 10px 0 0; font-size: 11.5px; color: var(--muted); }
+.thumbs { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.thumbs figure { margin: 0; width: 72px; } .thumbs img { width: 72px; height: 72px; object-fit: contain; background: var(--surface-2); border-radius: 4px; display: block; }
+.thumbs figcaption { font: 500 10.5px/1.3 var(--font-mono); color: var(--ink-2); margin-top: 3px; }
 .detail .code { font: 600 15px/1.3 var(--font-mono); }
 .detail .code em { font-style: normal; color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 6px; }
 .detail .addr { color: var(--ink-2); margin-top: 2px; }
@@ -99,7 +106,10 @@ aside .head nav { display: flex; gap: 12px; font-size: 13px; } aside .head nav a
   const css = getComputedStyle(document.documentElement);
   const color = (n) => css.getPropertyValue(`--s${((n - 1) % 8) + 1}`).trim();
 
-  $("summary").innerHTML = `<span><b>${km(M.total_km)} km</b></span><span><b>${M.walls}</b> walls</span><span><b>${M.stages}</b> stages</span><span><b>${dur(M.est_s)}</b> est.</span>`;
+  $("summary").innerHTML = `<span><b>${km(M.total_km)} km</b></span><span><b>${M.walls}</b> walls</span><span><b>${M.stages}</b> stages</span><span><b>${dur(M.est_s)}</b> est.</span>${M.points_total ? `<span><b>${M.points_total.toLocaleString("en-GB")}</b> pts</span>` : ""}`;
+  const STATUS = { ok: "OK", damaged: "damaged", very_damaged: "badly damaged", destroyed: "destroyed", hidden: "hidden", unknown: "status unknown" };
+  const thumbs = (r) => (r.invaders || []).some((d) => d.closeup) ? `<div class="thumbs">${r.invaders.map((d) => `<figure>${d.closeup ? `<img src="${esc(d.closeup)}" alt="${esc(d.code)}" loading="lazy">` : ""}<figcaption>${esc(d.code)}${d.points ? ` · ${d.points}` : ""}${d.status && d.status !== "ok" ? `<br>${STATUS[d.status] || esc(d.status)}` : ""}</figcaption></figure>`).join("")}</div>` : "";
+  const gallery = (r) => (r.invaders || []).map((d) => `<figure class="shot">${d.photo ? `<a href="${esc(d.photo_full || d.photo)}" target="_blank" rel="noopener"><img src="${esc(d.photo)}" alt="${esc(d.code)}" loading="lazy"></a>` : ""}<figcaption><b>${esc(d.code)}</b>${d.points ? ` · ${d.points} pts` : ""} · ${STATUS[d.status] || esc(d.status || "?")}${d.status_date ? ` (${esc(d.status_date)})` : ""}${d.installed ? ` · installed ${esc(d.installed)}` : ""}${d.instagram ? ` · <a href="${esc(d.instagram)}" target="_blank" rel="noopener">Instagram</a>` : ""}</figcaption></figure>`).join("");
 
   const map = L.map("map", { zoomControl: true, preferCanvas: true });
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors" }).addTo(map);
@@ -112,7 +122,7 @@ aside .head nav { display: flex; gap: 12px; font-size: 13px; } aside .head nav a
     R.slice(s.start.i - 1, s.end.i).forEach((r) => {
       if (markers.has(r.i)) return;
       const m = L.circleMarker([r.lat, r.lon], { radius: 4.5, color: "#fff", weight: 1.2, fillColor: color(r.stage), fillOpacity: 1 });
-      m.bindPopup(`<div class="code">${esc(r.label)}</div><div class="addr">${esc(r.address)} ${arrLabel(r.arr)}</div><div class="cum">#${r.i} · km ${km(r.cum_km)} · stage ${r.stage}</div>`);
+      m.bindPopup(() => `<div class="code">${esc(r.label)}</div><div class="addr">${esc(r.address)} ${arrLabel(r.arr)}</div><div class="cum">#${r.i} · km ${km(r.cum_km)} · stage ${r.stage}${r.points ? ` · ${r.points} pts` : ""}</div>${thumbs(r)}`, { maxWidth: 320 });
       m.on("click", () => select(r.i, false));
       m.addTo(group); markers.set(r.i, m);
     });
@@ -157,7 +167,9 @@ aside .head nav { display: flex; gap: 12px; font-size: 13px; } aside .head nav a
     const prev = R[i - 2], next = R[i];
     $("detail").innerHTML = `<div class="code">${esc(r.label)}${r.codes.length > 1 ? `<em>${r.codes.length} invaders</em>` : ""}</div><div class="addr">${esc(r.address)}${r.arr ? `, ${arrLabel(r.arr)}` : ""}</div>
       <div class="row"><span>#${r.i} of ${R.length}</span><span>km ${km(r.cum_km)}</span><span>stage ${r.stage}</span>${r.leg_km ? `<span>${Math.round(r.leg_km * 1000)} m from previous</span>` : ""}</div>
-      <div class="nav">${prev ? `<button type="button" data-go="${prev.i}">← #${prev.i} ${esc(prev.id)}</button>` : ""}${next ? `<button type="button" data-go="${next.i}">#${next.i} ${esc(next.id)} →</button>` : ""}</div>`;
+      <div class="nav">${prev ? `<button type="button" data-go="${prev.i}">← #${prev.i} ${esc(prev.id)}</button>` : ""}${next ? `<button type="button" data-go="${next.i}">#${next.i} ${esc(next.id)} →</button>` : ""}</div>
+      <div class="gallery">${gallery(r)}</div>
+      <p class="credit">Pictures and statuses: invader-spotter.art</p>`;
   }
   $("detail").addEventListener("click", (e) => { const b = e.target.closest("button[data-go]"); if (b) select(+b.dataset.go); });
 

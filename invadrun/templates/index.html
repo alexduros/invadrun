@@ -68,7 +68,8 @@ pre.cmd .c { color: var(--muted); }
     <div class="cta">
       <a class="primary" href="plan.html">Open the route book</a>
       <a href="viewer.html">Explore on the map</a>
-      <a href="data/invadrun.gpx">Download the GPX</a>
+      <a href="data/invadrun.gpx">GPX for the watch</a>
+      <a href="data/invadrun-poi.kml">Pins for Organic Maps</a>
     </div>
     <figure class="hero-map">
       <div id="hero-map"></div>
@@ -96,11 +97,11 @@ pre.cmd .c { color: var(--muted); }
         <figcaption>Every arrow is a file on disk, so any step can be re-run alone: swap the dataset, widen the scope to the suburbs, or give the solver more time.</figcaption>
       </figure>
       <ol class="steps">
-        <li><p><b>Clean the dataset.</b> The invader-spotter export is a uMap layer with broken accents and codes written five different ways. Each wall gets its list of codes, a readable address, its arrondissement and a flag for whether it sits inside Paris. <span id="s-clean"></span></p></li>
+        <li><p><b>Clean the dataset.</b> The locations are a uMap layer with broken accents and codes written five different ways. Each wall gets its list of codes, a readable address, its arrondissement and a flag for whether it sits inside Paris. The current status, points, installation date and pictures of every invader come from invader-spotter.art; walls reported destroyed or hidden are left out. <span id="s-clean"></span></p></li>
         <li><p><b>Download the footpath network.</b> OpenStreetMap's walkable ways for Paris and a small margin around it, cached once as GraphML. <span id="s-graph"></span></p></li>
         <li><p><b>Measure every pair.</b> Each wall is snapped to its nearest node, then one single-source Dijkstra per wall fills the whole distance matrix. <span id="s-matrix"></span></p></li>
         <li><p><b>Find the order.</b> OR-Tools solves an open travelling-salesman path: start and finish are free, so the solver picks them. Guided local search polishes the tour for as long as you let it. <span id="s-solve"></span></p></li>
-        <li><p><b>Write the plan.</b> Shortest paths between consecutive walls give the geometry; the path is cut into stages at the nearest wall and exported as GPX, JSON and these pages. <span id="s-export"></span></p></li>
+        <li><p><b>Write the plan.</b> Shortest paths between consecutive walls give the geometry; the path is cut into stages at the nearest wall and exported as GPX for the watch, KML and GPX pins for Organic Maps (one per place, with pictures), JSON and these pages. <span id="s-export"></span></p></li>
       </ol>
     </div>
   </section>
@@ -136,7 +137,7 @@ make serve</pre>
   <section class="block">
     <header><h2>Sources &amp; fair play</h2></header>
     <div class="srcs">
-      <p><b>Wall locations</b> come from <a href="https://www.invader-spotter.art/villes.php">invader-spotter.art</a>, exported through uMap. It is a snapshot: walls get destroyed, covered and restored all the time, so check the current status before an attempt and keep <code>data/exclusions.txt</code> honest.</p>
+      <p><b>Wall locations</b> are a uMap export built from <a href="https://www.invader-spotter.art/villes.php">invader-spotter.art</a>; <b>statuses, points, dates and pictures</b> are read from the same site and the Organic Maps pins link straight to its photos. Walls get destroyed, covered and restored all the time, so refresh before an attempt (<code>invadrun spotter --refresh</code>). Newer invaders that are not yet in the location layer cannot be routed.</p>
       <p><b>Streets</b> are © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>, ODbL, fetched with osmnx. Routing uses the walking network only.</p>
       <p><b>Solver</b> is Google OR-Tools; the matrix is scipy's sparse Dijkstra. The code is public domain (Unlicense).</p>
       <p><b>The art belongs to Invader.</b> Flash it, don't touch it, and treat the walls, courtyards and neighbours the same way a walker would.</p>
@@ -158,7 +159,7 @@ make serve</pre>
   const dur = (s) => { const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h}h${String(m).padStart(2, "0")}` : `${m} min`; };
   const arrLabel = (a) => a === 1 ? "1er" : `${a}e`;
 
-  $("facts").innerHTML = [[km(M.total_km) + " km", "on foot"], [int(M.walls), "walls"], [int(M.codes), "invaders"], [M.stages, "stages"], [dur(M.est_s), "estimated, at " + M.pace + "/km"]]
+  $("facts").innerHTML = [[km(M.total_km) + " km", "on foot"], [int(M.walls), "walls"], [int(M.codes), "invaders"], ...(M.points_total ? [[int(M.points_total), "points"]] : []), [M.stages, "stages"], [dur(M.est_s), "estimated, at " + M.pace + "/km"]]
     .map(([v, l]) => `<span><b>${v}</b> ${l}</span>`).join("");
   $("foot-meta").textContent = `route of ${M.generated} · invadrun ${M.version}`;
 
@@ -168,21 +169,21 @@ make serve</pre>
   // pipeline diagram
   const g = M.graph || {};
   const nodes = [
-    ["uMap export", `${int(M.walls + K.outside_city.length + K.excluded.length + Object.values(K.other_cities || {}).reduce((a, b) => a + b, 0))} points`],
-    ["Clean dataset", `${int(M.walls)} walls in Paris`],
+    ["uMap export + invader-spotter", `${int(M.walls + K.outside_city.length + K.excluded.length + (K.unflashable || []).length + Object.values(K.other_cities || {}).reduce((a, b) => a + b, 0))} points, statuses, pictures`],
+    ["Clean dataset", `${int(M.walls)} walls to flash in Paris`],
     ["Walking graph", g.nodes ? `${int(g.nodes)} nodes` : "OpenStreetMap"],
     ["Distance matrix", `${int(M.walls)} × ${int(M.walls)} metres`],
     ["Visiting order", "open TSP path", true],
     ["GPX + route book", `${km(M.total_km)} km, ${M.stages} stages`],
   ];
-  const labels = ["fix codes, keep Paris", "snap to nearest node", "one Dijkstra per wall", "OR-Tools, guided search", "shortest path per leg"];
+  const labels = ["fix codes, drop destroyed, keep Paris", "snap to nearest node", "one Dijkstra per wall", "OR-Tools, guided search", "shortest path per leg"];
   const bw = 440, h = 46, step = 76, x = 1;
   $("d-nodes").innerHTML = nodes.map(([t, s, acc], i) => {
     const y = 2 + i * step;
     const arrow = i < 5 ? `<path class="d-arrow" d="M${x + 40} ${y + h + 2}V${y + step - 3}" marker-end="url(#arr)"/><text class="d-lbl" x="${x + 52}" y="${y + h + 19}">${labels[i]}</text>` : "";
     return `<rect class="d-box${acc ? " acc" : ""}" x="${x}" y="${y}" width="${bw}" height="${h}" rx="3"/><text class="d-title" x="${x + 14}" y="${y + 20}">${t}</text><text class="d-sub" x="${x + 14}" y="${y + 36}">${s}</text>${arrow}`;
   }).join("");
-  $("s-clean").textContent = `${int(K.outside_city.length)} PA walls fall outside the limits and are kept aside.`;
+  $("s-clean").textContent = `${int((K.unflashable || []).length)} walls are currently destroyed or hidden and ${int(K.outside_city.length)} fall outside the limits; both are kept aside.`;
   $("s-graph").textContent = g.nodes ? `${int(g.nodes)} nodes, ${int(g.edges)} edges.` : "";
   $("s-matrix").textContent = `${int(M.walls)} walls, so ${int(M.walls)} searches instead of ${int(M.walls * (M.walls - 1) / 2)} pairs.`;
   $("s-solve").textContent = `This route had ${M.solver.time_limit_s} s.`;

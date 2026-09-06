@@ -4,8 +4,11 @@ The shortest walk past every Space Invader in Paris, as a GPX track and a
 stage-by-stage route book for a fastest-known-time attempt.
 
 - **Route book** (`docs/plan.html`): stages, cue sheets, time budget, downloads.
-- **Map viewer** (`docs/viewer.html`): the route and every wall on OpenStreetMap tiles.
+- **Map viewer** (`docs/viewer.html`): the route and every wall on OpenStreetMap tiles, with pictures.
 - **Project page** (`docs/index.html`): what it is, how it is built, sources.
+- **Files** (`docs/data/`): `invadrun.gpx` and `stage_NN.gpx` for a watch,
+  `invadrun-poi.kml` / `invadrun-poi.gpx` for Organic Maps (one pin per place,
+  pictures, points, status), `plan.json` with everything.
 
 Current route (scope `paris`, snapshot of invader-spotter from September 2024):
 
@@ -19,8 +22,10 @@ time budget, the exclusions file and the scope; see below.
 ## How it works
 
 ```
-data/raw/invaders_umap.json   uMap export of invader-spotter.art (1,264 points)
-        │  invadrun clean      fix encoding, parse "PA_0035 & PA_0482", tag city limits + arrondissement
+data/raw/invaders_umap.json   uMap export of invader-spotter.art locations (1,264 points)
+data/spotter.json             invadrun spotter: status, points, dates, pictures per code (invader-spotter.art)
+        │  invadrun clean      fix encoding, parse "PA_0035 & PA_0482", tag city limits + arrondissement,
+        │                      merge statuses (destroyed/hidden walls leave the route)
         ▼
 data/invaders.geojson         one feature per wall, clean codes
         │  invadrun matrix     OSM walking graph (osmnx, cached) → snap walls → scipy Dijkstra per wall
@@ -29,7 +34,7 @@ cache/matrix.npz              1,135 × 1,135 metres along footpaths (~10 s)
         │  invadrun solve      OR-Tools open TSP path, free or fixed start/end, guided local search
         ▼
 cache/route.json              visiting order
-        │  invadrun export     shortest path per leg → GPX (full + per stage), plan.json, HTML pages
+        │  invadrun export     shortest path per leg → GPX (full + per stage), Organic Maps POIs, plan.json, HTML
         ▼
 docs/                         static site (GitHub Pages ready)
 ```
@@ -58,11 +63,13 @@ Or step by step:
 
 ```sh
 uv run invadrun context                   # once: Paris limits, arrondissements, Seine (data/context.geojson)
+uv run invadrun spotter [--refresh]       # statuses/points/pictures from invader-spotter.art (~2 min, polite)
 uv run invadrun clean                     # data/invaders.geojson + a summary
 uv run invadrun matrix                    # downloads the graph on first run (~1 min, 140 MB in cache/)
 uv run invadrun solve --time-limit 600    # more time = shorter route; --start PA_0041 --end PA_1000 to pin ends
 uv run invadrun export --stage-km 50 --pace 6:00 --flash-seconds 30
 uv run invadrun render                    # re-render HTML from docs/data/plan.json only
+uv run invadrun poi --radius 25           # rebuild the Organic Maps files only
 make serve                                # http://localhost:8000
 ```
 
@@ -71,8 +78,10 @@ Options:
 - `--scope paris` (default) routes the walls inside the city limits;
   `--scope all` routes every `PA_` code, suburbs and airport included
   (much larger graph download).
-- `data/exclusions.txt`: one code per line to skip (destroyed, covered,
-  unreachable). Re-run from `clean`.
+- Walls whose every code is reported *destroyed* or *hidden* by
+  invader-spotter are left out; `--keep-destroyed` routes them anyway.
+- `data/exclusions.txt`: one code per line to skip for any other reason.
+  Re-run from `clean`.
 - Stage boundaries fall on a wall; consecutive stages share it, so splitting
   costs no distance. Estimates count running at the given pace plus a fixed
   stop per wall, nothing else.
@@ -87,6 +96,23 @@ docs/            generated site: index, plan, viewer, data/*.gpx, data/plan.json
 cache/           git-ignored: OSM graph, distance matrix, route
 tests/
 ```
+
+## Organic Maps
+
+`docs/data/invadrun-poi.kml` (or the `.gpx` twin) is made for
+[Organic Maps](https://organicmaps.app/): open the file on the phone and choose
+Organic Maps, or *Bookmarks & Tracks → Import*. You get one bookmark list with:
+
+- one pin per **place**: walls closer than 25 m are merged, and a wall already
+  holds every code painted on it (e.g. `PA_0290 · PA_0532 (#12)`); the number is
+  the stop on the route, the colour is the stage;
+- a description with, for each invader, its **picture and close-up**, points,
+  last known status and date, installation date and Instagram tag, plus the
+  stop number, stage and kilometre;
+- the route itself as one track per stage.
+
+Pictures are loaded from invader-spotter.art when the pin is opened, so they
+need a connection the first time. Credit and thanks to the spotters.
 
 ## Deploy
 
@@ -119,8 +145,10 @@ Custom domain **invadrun.duros.fr** (DNS for `duros.fr` is hosted at Vercel):
 
 ## Sources
 
-- Wall locations: <https://www.invader-spotter.art/villes.php> (uMap export).
-  Statuses change often; check before an attempt.
+- Wall locations: uMap export of <https://www.invader-spotter.art/villes.php>.
+  Statuses, points, dates and pictures: same site, read by `invadrun spotter`
+  (keep it rare: one polite pass through the listing). Invaders newer than the
+  location layer cannot be routed until someone maps them.
 - Streets: © OpenStreetMap contributors, ODbL, via [osmnx](https://osmnx.readthedocs.io/).
 - Solver: [OR-Tools](https://developers.google.com/optimization) routing library.
 

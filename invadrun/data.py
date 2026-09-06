@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Iterable
@@ -153,9 +154,36 @@ def _bbox_paris(inv: Invader) -> bool:
     return 2.224 <= inv.lon <= 2.470 and 48.815 <= inv.lat <= 48.903
 
 
+# Wall status = best status among its codes. Anything in UNFLASHABLE cannot be
+# flashed today and is left out of the route unless --keep-destroyed is given.
+STATUS_RANK = ["ok", "damaged", "very_damaged", "unknown", "hidden", "not_visible", "destroyed"]
+UNFLASHABLE = {"destroyed", "hidden", "not_visible"}
+
+
+def merge_spotter(invaders: Iterable[Invader], spotter: dict[str, dict]) -> None:
+    """Attach invader-spotter status, points, dates and pictures to each wall."""
+    for inv in invaders:
+        details = []
+        for code in inv.codes:
+            rec = spotter.get(code)
+            details.append({"code": code, **({k: rec[k] for k in ("status", "status_text", "status_date", "points", "installed", "photo", "photo_full", "closeup", "instagram")} if rec else {"status": "unknown"})})
+        inv.extra["invaders"] = details
+        statuses = [d.get("status", "unknown") for d in details]
+        inv.extra["status"] = min(statuses, key=lambda st: STATUS_RANK.index(st) if st in STATUS_RANK else len(STATUS_RANK))
+        pts = [d.get("points") for d in details if d.get("points")]
+        inv.extra["points"] = sum(pts) if pts else None
+        if not inv.extra.get("arrondissement"):
+            arr = next((spotter[c]["arrondissement"] for c in inv.codes if c in spotter and spotter[c].get("arrondissement")), None)
+            if arr and inv.in_paris:
+                inv.extra["arrondissement"] = arr
+
+
 def clean(raw: Path = paths.RAW_UMAP, out: Path = paths.INVADERS) -> list[Invader]:
+    from . import spotter as spotter_mod
+
     invaders = load_raw(raw)
     tag_in_paris(invaders, load_context())
+    merge_spotter(invaders, spotter_mod.load())
     exclusions = load_exclusions()
     for inv in invaders:
         hit = [c for c in inv.codes if c in exclusions]
@@ -198,13 +226,19 @@ def load(path: Path = paths.INVADERS) -> list[Invader]:
     return out
 
 
-def select(invaders: list[Invader], scope: str = "paris") -> list[Invader]:
-    """Targets for routing. ``paris`` = inside the city limits, ``all`` = every PA_ code."""
+def select(invaders: list[Invader], scope: str = "paris", keep_destroyed: bool = False) -> list[Invader]:
+    """Targets for routing. ``paris`` = inside the city limits, ``all`` = every PA_ code.
+
+    Walls whose every code is destroyed/hidden (per invader-spotter) are dropped
+    unless ``keep_destroyed``.
+    """
     keep = [i for i in invaders if not i.excluded and i.city == "PA"]
     if scope == "paris":
         keep = [i for i in keep if i.in_paris]
     elif scope != "all":
         raise ValueError(f"unknown scope {scope!r} (expected 'paris' or 'all')")
+    if not keep_destroyed:
+        keep = [i for i in keep if i.extra.get("status", "unknown") not in UNFLASHABLE]
     return keep
 
 
@@ -218,5 +252,8 @@ def summary(invaders: list[Invader]) -> dict:
         "inside_city_limits": sum(1 for i in pa if i.in_paris),
         "outside_city_limits": sum(1 for i in pa if not i.in_paris),
         "excluded": sum(1 for i in invaders if i.excluded),
+        "unflashable_in_city": sum(1 for i in pa if i.in_paris and i.extra.get("status") in UNFLASHABLE),
+        "status_in_city": dict(sorted(Counter(i.extra.get("status", "unknown") for i in pa if i.in_paris).items())),
+        "points_in_city": sum(i.extra.get("points") or 0 for i in pa if i.in_paris and i.extra.get("status") not in UNFLASHABLE),
         "other_cities": sorted({i.city for i in invaders if i.city != "PA"}),
     }

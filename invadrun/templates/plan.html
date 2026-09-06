@@ -61,6 +61,7 @@ details.cue table { font-size: 13px; }
 details.cue th { position: sticky; top: 0; background: var(--surface); }
 details.cue td.code { font-family: var(--font-mono); font-weight: 500; white-space: nowrap; }
 details.cue td.code em { font-style: normal; color: var(--muted); font-weight: 400; }
+details.cue td.code em.st { display: block; font-size: 11.5px; font-family: var(--font-body); }
 details.cue td.num { color: var(--ink-2); white-space: nowrap; }
 .boundary td { background: var(--surface-2); }
 /* prep */
@@ -129,7 +130,8 @@ details.cue td.num { color: var(--ink-2); white-space: nowrap; }
       <div>
         <h3>Before the attempt</h3>
         <ul>
-          <li><b>Check every wall is still there.</b> Statuses change weekly on invader-spotter.art. Add destroyed or covered walls to <code>data/exclusions.txt</code> and re-run; the route re-optimises around them.</li>
+          <li><b>Refresh the statuses the week before.</b> <code>invadrun spotter --refresh</code> pulls the latest state of every wall from invader-spotter.art; destroyed and hidden walls drop out of the route on the next run. Anything else goes in <code>data/exclusions.txt</code>.</li>
+          <li><b>Put the pins on your phone.</b> Import <code>invadrun-poi.kml</code> into Organic Maps: one pin per place, coloured by stage, with the picture of each invader so you know what you are looking for.</li>
           <li><b>Load one GPX per stage</b> on the watch and keep the full track on the phone. Stage files are listed at the bottom of this page.</li>
           <li><b>Budget phone battery for FlashInvaders.</b> Every wall is a photo with GPS and mobile data on; a power bank per stage is not optional.</li>
           <li><b>Record the evidence.</b> A continuous GPS track per stage, the app's flash timestamps, and a photo at the first and last wall are what a fastest-known-time claim rests on.</li>
@@ -166,6 +168,8 @@ details.cue td.num { color: var(--ink-2); white-space: nowrap; }
   const int = (v) => v.toLocaleString("en-GB");
   const pace = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   const sw = InvMap.swatch;
+  const STATUS = { damaged: "damaged", very_damaged: "badly damaged", unknown: "status unknown" };
+  const statusTag = (r) => STATUS[r.status] ? ` <em class="st">${STATUS[r.status]}</em>` : "";
   const arrLabel = (a) => a == null ? "" : (a === 1 ? "1er" : `${a}e`);
 
   $("meta-line").textContent = `Route book · ${M.generated} · ${M.scope === "paris" ? "Paris intra-muros" : "all PA codes"} · ${M.walls} walls`;
@@ -178,6 +182,7 @@ details.cue td.num { color: var(--ink-2); white-space: nowrap; }
     ["Running", dur(M.run_s), `at ${M.pace} min/km`],
     ["At the walls", dur(M.flash_s), `${M.flash_seconds} s to flash each`],
     ["Total", dur(M.est_s), "no breaks, no sleep"],
+    ...(M.points_total ? [["Score", `${int(M.points_total)} pts`, "FlashInvaders points, per invader-spotter"]] : []),
   ].map(([k, v, s]) => `<div><dt>${k}</dt><dd>${v}<small>${s}</small></dd></div>`).join("");
 
   const mapEl = $("map");
@@ -217,8 +222,8 @@ details.cue td.num { color: var(--ink-2); white-space: nowrap; }
       </div>
       <p class="arrs">Arrondissements crossed: ${s.arrondissements.map(arrLabel).join(", ") || "—"}. Running ${dur(s.run_s)}, at the walls ${dur(s.flash_s)}.</p>
       <details class="cue"><summary>Cue sheet · ${rows.length} stops</summary><div class="table-wrap"><table>
-        <thead><tr><th class="r">#</th><th>Invader</th><th>Address</th><th>Arr.</th><th class="r">Leg</th><th class="r">Total</th></tr></thead>
-        <tbody>${rows.map((r, i) => `<tr class="${i === 0 && s.n > 1 ? "boundary" : ""}"><td class="num r">${r.i}</td><td class="code">${esc(r.label)}${r.codes.length > 1 ? ` <em>×${r.codes.length}</em>` : ""}</td><td>${esc(r.address)}</td><td class="num">${arrLabel(r.arr)}</td><td class="num r">${i === 0 ? (s.n > 1 ? "resume" : "start") : int(Math.round(r.leg_km * 1000)) + " m"}</td><td class="num r">${km(r.cum_km)} km</td></tr>`).join("")}</tbody>
+        <thead><tr><th class="r">#</th><th>Invader</th><th>Address</th><th>Arr.</th><th class="r">Pts</th><th class="r">Leg</th><th class="r">Total</th></tr></thead>
+        <tbody>${rows.map((r, i) => `<tr class="${i === 0 && s.n > 1 ? "boundary" : ""}"><td class="num r">${r.i}</td><td class="code">${esc(r.label)}${r.codes.length > 1 ? ` <em>×${r.codes.length}</em>` : ""}${statusTag(r)}</td><td>${esc(r.address)}</td><td class="num">${arrLabel(r.arr)}</td><td class="num r">${r.points ?? "–"}</td><td class="num r">${i === 0 ? (s.n > 1 ? "resume" : "start") : int(Math.round(r.leg_km * 1000)) + " m"}</td><td class="num r">${km(r.cum_km)} km</td></tr>`).join("")}</tbody>
       </table></div></details>
     </article>`;
   }).join("");
@@ -229,14 +234,16 @@ details.cue td.num { color: var(--ink-2); white-space: nowrap; }
   $("cmd").textContent = `# change the assumptions and re-render\nuv run invadrun export --pace ${M.pace} --flash-seconds ${M.flash_seconds} --stage-km ${M.stage_km}`;
 
   // skipped
-  const K = plan.skipped, others = Object.entries(K.other_cities || {});
-  $("skipped-note").textContent = `${K.outside_city.length} PA walls sit outside the city limits and ${K.excluded.length} are excluded by hand${others.length ? `; the dataset also holds ${others.map(([c, n]) => `${n} ${c} walls`).join(", ")}` : ""}. Run with --scope all to route the suburbs too.`;
+  const K = plan.skipped, others = Object.entries(K.other_cities || {}), gone = K.unflashable || [];
+  const STATUS_LONG = { destroyed: "destroyed", hidden: "hidden or covered", not_visible: "not visible" };
+  $("skipped-note").textContent = `${gone.length} walls inside Paris are reported destroyed or hidden by invader-spotter and are left out; ${K.outside_city.length} PA walls sit outside the city limits and ${K.excluded.length} are excluded by hand${others.length ? `; the dataset also holds ${others.map(([c, n]) => `${n} ${c} walls`).join(", ")}` : ""}. Run with --keep-destroyed or --scope all to change that.`;
   $("skipped-body").innerHTML =
-    `<details><summary>Outside the city limits (${K.outside_city.length})</summary><ul class="list">${K.outside_city.map((o) => `<li><b>${esc(o.label)}</b> — ${esc(o.address)}</li>`).join("")}</ul></details>` +
+    (gone.length ? `<details><summary>Destroyed or hidden (${gone.length})</summary><ul class="list">${gone.map((o) => `<li><b>${esc(o.label)}</b> — ${esc(o.address)} · ${STATUS_LONG[o.status] || esc(o.status)}${o.status_date ? `, ${esc(o.status_date)}` : ""}</li>`).join("")}</ul></details>` : "") +
+    `<details style="margin-top:10px"><summary>Outside the city limits (${K.outside_city.length})</summary><ul class="list">${K.outside_city.map((o) => `<li><b>${esc(o.label)}</b> — ${esc(o.address)}</li>`).join("")}</ul></details>` +
     (K.excluded.length ? `<details style="margin-top:10px"><summary>Excluded (${K.excluded.length})</summary><ul class="list">${K.excluded.map((o) => `<li><b>${esc(o.label)}</b> — ${esc(o.address)}${o.reason ? ` · ${esc(o.reason)}` : ""}</li>`).join("")}</ul></details>` : `<p style="margin-top:10px;font-size:13.5px;color:var(--muted)">No wall is excluded yet: <code>data/exclusions.txt</code> is empty.</p>`);
 
   // downloads
-  $("dl").innerHTML = [`<li><a href="data/invadrun.gpx"><b>Full route</b><small>invadrun.gpx · ${km(M.total_km)} km · ${M.walls} waypoints</small></a></li>`]
+  $("dl").innerHTML = [`<li><a href="data/invadrun.gpx"><b>Full route</b><small>invadrun.gpx · ${km(M.total_km)} km · ${M.walls} waypoints, for watches</small></a></li>`, `<li><a href="data/invadrun-poi.kml"><b>Organic Maps pins (KML)</b><small>invadrun-poi.kml · one pin per place, pictures &amp; statuses</small></a></li>`, `<li><a href="data/invadrun-poi.gpx"><b>Organic Maps pins (GPX)</b><small>invadrun-poi.gpx · same content as GPX</small></a></li>`]
     .concat(S.map((s) => `<li><a href="data/stage_${String(s.n).padStart(2, "0")}.gpx"><b>Stage ${s.n}</b><small>stage_${String(s.n).padStart(2, "0")}.gpx · ${km(s.km)} km · ${s.walls} walls</small></a></li>`))
     .concat([`<li><a href="data/plan.json"><b>Plan data</b><small>plan.json · route, stages, geometry</small></a></li>`]).join("");
 })();

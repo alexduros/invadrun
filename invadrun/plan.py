@@ -125,6 +125,9 @@ def build_plan(
             "cum_km": round(cum_km[i], 2),
             "stage": stage_of[i],
             "snap_m": int(round(snap_m[i])),
+            "status": inv.extra.get("status", "unknown"),
+            "points": inv.extra.get("points"),
+            "invaders": inv.extra.get("invaders", [{"code": c, "status": "unknown"} for c in inv.codes]),
         }
         for i, inv in enumerate(ordered)
     ]
@@ -160,6 +163,8 @@ def build_plan(
             "solver": solver,
             "graph": graph_info or {},
             "per_arrondissement": dict(sorted(per_arr.items())),
+            "points_total": sum(inv.extra.get("points") or 0 for inv in ordered),
+            "status_counts": {k: sum(1 for inv in ordered if inv.extra.get("status", "unknown") == k) for k in sorted({inv.extra.get("status", "unknown") for inv in ordered})},
             "snap_over_50m": int(sum(1 for s in snap_m if s > 50)),
         },
         "stages": stages,

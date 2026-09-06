@@ -35,10 +35,31 @@ def cmd_clean(args) -> None:
     print(json.dumps(data.summary(inv), indent=1, ensure_ascii=False))
 
 
-def _targets(scope: str):
+def _targets(scope: str, keep_destroyed: bool = False):
     from . import data
 
-    return data.select(data.load(), scope=scope)
+    return data.select(data.load(), scope=scope, keep_destroyed=keep_destroyed)
+
+
+def cmd_spotter(args) -> None:
+    from . import spotter
+
+    if args.refresh or not any(spotter.PAGES.glob("PA_lst_p*.html")):
+        n = spotter.fetch(log=log)
+        log(f"spotter: fetched {n} listing pages")
+    data = spotter.parse_cached()
+    spotter.save(data)
+    from collections import Counter
+
+    log(f"spotter -> {spotter.SPOTTER.relative_to(paths.ROOT)}: {len(data)} invaders, {dict(Counter(v['status'] for v in data.values()))}")
+
+
+def cmd_poi(args) -> None:
+    from . import poi
+
+    plan = json.loads((paths.DOCS_DATA / "plan.json").read_text(encoding="utf-8"))
+    info = poi.write_all(plan, radius_m=args.radius)
+    log(f"poi -> {info['gpx'].name}, {info['kml'].name}: {info['places']} places for {info['walls']} walls ({info['grouped']} places hold several walls)")
 
 
 def _graph(scope: str):
@@ -46,7 +67,7 @@ def _graph(scope: str):
 
     ctx = data.load_context()
     city = ctx["city"][0][1] if ctx.get("city") else None
-    inv = _targets(scope)
+    inv = _targets(scope, True)
     poly = graph.coverage_polygon([i.lat for i in inv], [i.lon for i in inv], city)
     t = time.time()
     G = graph.load_or_download(poly)
@@ -61,7 +82,7 @@ def cmd_graph(args) -> None:
 def cmd_matrix(args) -> None:
     from . import graph, matrix
 
-    inv = _targets(args.scope)
+    inv = _targets(args.scope, args.keep_destroyed)
     G = _graph(args.scope)
     net = graph.Network.from_multidigraph(G)
     node_idx, snap_m = net.snap([i.lat for i in inv], [i.lon for i in inv])
@@ -76,9 +97,9 @@ def cmd_solve(args) -> None:
 
     m = matrix.load()
     ids = list(m["ids"])
-    inv = {i.id: i for i in _targets(args.scope)}
+    inv = {i.id: i for i in _targets(args.scope, args.keep_destroyed)}
     if set(ids) != set(inv):
-        sys.exit("matrix and target set differ: run `invadrun matrix` again")
+        sys.exit("matrix and target set differ: run `invadrun matrix` again (same --scope/--keep-destroyed)")
 
     def idx(code: str | None):
         if code is None:
@@ -128,9 +149,10 @@ def cmd_export(args) -> None:
     total = sum(l.length_m for l in legs) / 1000
     log(f"geometry: {len(legs)} legs, {total:.1f} km, {sum(len(l.coords) for l in legs)} points ({time.time() - t:.0f}s)")
 
-    targets = {i.id for i in data.select(all_inv, scope=route["scope"])}
+    targets = set(route["ids"])
     skipped = {
         "outside_city": [_brief(i) for i in all_inv if i.city == "PA" and not i.excluded and i.id not in targets and not i.in_paris],
+        "unflashable": [_brief(i) | {"status": i.extra.get("status"), "status_date": next((d.get("status_date") for d in inv_details(i) if d.get("status_date")), "")} for i in all_inv if i.city == "PA" and i.in_paris and not i.excluded and i.id not in targets and i.extra.get("status") in data.UNFLASHABLE],
         "excluded": [_brief(i) | {"reason": i.exclude_reason} for i in all_inv if i.excluded],
         "other_cities": {c: sum(1 for i in all_inv if i.city == c) for c in sorted({i.city for i in all_inv if i.city != "PA"})},
     }
@@ -165,6 +187,10 @@ def cmd_export(args) -> None:
         if int(stale.stem.split("_")[1]) > len(p["stages"]):
             stale.unlink()
     log(f"export -> docs/data/plan.json, invadrun.gpx, {len(p['stages'])} stage GPX")
+    from . import poi
+
+    info = poi.write_all(p)
+    log(f"poi -> invadrun-poi.gpx/.kml: {info['places']} places for {info['walls']} walls")
     pages = plan.render_pages(p)
     log("render -> " + ", ".join(pg.relative_to(paths.ROOT).as_posix() for pg in pages))
 
@@ -180,6 +206,11 @@ def cmd_render(args) -> None:
 def cmd_all(args) -> None:
     if not paths.CONTEXT.exists():
         cmd_context(args)
+    from . import spotter
+
+    if not spotter.SPOTTER.exists():
+        args.refresh = False
+        cmd_spotter(args)
     cmd_clean(args)
     cmd_matrix(args)
     cmd_solve(args)
@@ -188,6 +219,10 @@ def cmd_all(args) -> None:
 
 def _brief(i) -> dict:
     return {"id": i.id, "label": i.label, "address": i.address, "lat": round(i.lat, 6), "lon": round(i.lon, 6)}
+
+
+def inv_details(i) -> list[dict]:
+    return i.extra.get("invaders", [])
 
 
 def _ortools_version() -> str:
@@ -206,10 +241,14 @@ def main(argv=None) -> None:
     ap = argparse.ArgumentParser(prog="invadrun", description=__doc__)
     ap.add_argument("--version", action="version", version=__version__)
     ap.add_argument("--scope", choices=["paris", "all"], default="paris", help="paris = inside city limits (default); all = every PA_ code")
+    ap.add_argument("--keep-destroyed", action="store_true", help="route walls invader-spotter reports as destroyed or hidden too")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("context", help="fetch Paris limits, arrondissements and Seine from OSM").set_defaults(fn=cmd_context)
-    sub.add_parser("clean", help="normalise the raw uMap export into data/invaders.geojson").set_defaults(fn=cmd_clean)
+    p = sub.add_parser("spotter", help="statuses, points and pictures from invader-spotter.art -> data/spotter.json")
+    p.add_argument("--refresh", action="store_true", help="re-download the listing pages (polite, ~2 min)")
+    p.set_defaults(fn=cmd_spotter)
+    sub.add_parser("clean", help="normalise the raw uMap export into data/invaders.geojson (merges spotter.json)").set_defaults(fn=cmd_clean)
     sub.add_parser("graph", help="download/cache the OSM walking network").set_defaults(fn=cmd_graph)
 
     p = sub.add_parser("matrix", help="street distance matrix between targets")
@@ -228,6 +267,10 @@ def main(argv=None) -> None:
     p.set_defaults(fn=cmd_export)
 
     sub.add_parser("render", help="re-render HTML pages from docs/data/plan.json").set_defaults(fn=cmd_render)
+
+    p = sub.add_parser("poi", help="Organic Maps POI files (GPX + KML) from docs/data/plan.json")
+    p.add_argument("--radius", type=float, default=25.0, help="merge walls closer than this many metres (default 25)")
+    p.set_defaults(fn=cmd_poi)
 
     p = sub.add_parser("all", help="clean + matrix + solve + export")
     p.add_argument("--chunk", type=int, default=64)

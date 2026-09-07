@@ -133,6 +133,40 @@ gh api -X PUT repos/alexduros/invadrun/pages -F https_enforced=true       # once
 Optional hardening: GitHub → Settings → Pages → *Add a verified domain* for
 `duros.fr`, so no other account can bind a Pages site to it.
 
+## Next versions
+
+Two more cities are planned. The pipeline stays the same; the data and the
+scope change.
+
+**Versailles (`VRS_`)**. invader-spotter lists 42 invaders; the uMap layer
+already holds 32 of them (`VRS_001` to `VRS_042`, 10 gaps), all inside a
+4 km box around the château. To do:
+
+- complete the 10 missing locations in the layer (same name format,
+  `Space Invader VRS_0xx, address`, so `clean` parses it unchanged);
+- `invadrun spotter --city VRS`: the listing takes `ville=VRS`, the parser
+  is already city-agnostic;
+- a `--city VRS` scope: OSM polygon for "Versailles, France" instead of
+  Paris, its own cached graph (`cache/versailles_walk.graphml`), matrix,
+  route and plan files;
+- pages under `docs/versailles/` with their own `plan.json`; one stage,
+  half a day, so the stage logic should accept a single stage gracefully.
+
+**Fontainebleau (`FTBL_`)**. invader-spotter lists 46 invaders; none are in
+the location layer yet. Same as Versailles, plus:
+
+- build the layer from scratch (uMap or GeoJSON, one point per wall);
+- several walls are in the forest and on the château grounds: the graph
+  polygon must be the commune plus a forest buffer, and the plan should note
+  park opening hours.
+
+Code changes this needs: `data.select` currently keys on `city == "PA"` and
+`in_paris`; make the city a parameter with a small table (prefix, OSM place
+name, code padding), make the arrondissement layer optional, and give
+`paths` a per-city output directory. Codes are padded to 4 digits for Paris
+and kept as written elsewhere; check what FlashInvaders uses for FTBL before
+choosing.
+
 ## Sources
 
 - Wall locations: uMap export of <https://www.invader-spotter.art/villes.php>.

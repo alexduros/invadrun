@@ -116,32 +116,22 @@ need a connection the first time. Credit and thanks to the spotters.
 
 ## Deploy
 
-`docs/` is served by GitHub Pages (branch `main`, path `/docs`):
-<https://alexduros.github.io/invadrun/>. Regenerate with `uv run invadrun export`
-(or `render`), commit `docs/`, push; Pages rebuilds in about a minute.
+The site is <https://invadrun.duros.fr/>: the `docs/` folder served by GitHub
+Pages (branch `main`, path `/docs`, custom domain in `docs/CNAME`, HTTPS
+enforced). `alexduros.github.io/invadrun/` redirects there. Regenerate with
+`uv run invadrun export` (or `render`), commit `docs/`, push; Pages rebuilds
+in about a minute.
 
-Custom domain **invadrun.duros.fr** (DNS for `duros.fr` is hosted at Vercel):
+DNS for `duros.fr` is hosted at Vercel: `invadrun  CNAME  alexduros.github.io.`
+If the domain ever needs re-binding:
 
-1. Vercel → Domains → `duros.fr` → DNS records, add
-   `invadrun  CNAME  alexduros.github.io.` (TTL 60). Today the name falls
-   through to a wildcard that answers with a Vercel 404, so a specific record
-   is required.
-2. Once `dig +short CNAME invadrun.duros.fr` returns `alexduros.github.io.`,
-   point Pages at the domain (this also commits `docs/CNAME`):
+```sh
+gh api -X PUT repos/alexduros/invadrun/pages -f cname=invadrun.duros.fr   # writes docs/CNAME
+gh api -X PUT repos/alexduros/invadrun/pages -F https_enforced=true       # once the certificate is issued
+```
 
-   ```sh
-   gh api -X PUT repos/alexduros/invadrun/pages -f cname=invadrun.duros.fr
-   ```
-
-   From then on `alexduros.github.io/invadrun/` redirects to the domain.
-3. GitHub issues a Let's Encrypt certificate a few minutes later; then enforce HTTPS:
-
-   ```sh
-   gh api -X PUT repos/alexduros/invadrun/pages -F https_enforced=true
-   ```
-
-4. Optional: GitHub → Settings → Pages → *Add a verified domain* for
-   `duros.fr`, so nobody else can bind a Pages site to it.
+Optional hardening: GitHub → Settings → Pages → *Add a verified domain* for
+`duros.fr`, so no other account can bind a Pages site to it.
 
 ## Sources
 
